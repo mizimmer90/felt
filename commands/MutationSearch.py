@@ -64,10 +64,6 @@ class MutationSearch(NumpydocClassCommand):
         '-d', '--rattle_distance', required=False, type=float, default=0.1,
         help='''The distance from any atom in the mutated residue to apply a
             flat-welled potential to. Other residues are fixed.''')
-    premin_steps = g2.add_argument(
-        '-p','--premin_steps', required=False, type=int, default=200,
-        help='''The maximum number of minimization steps to perform after the
-            mutation is performed and before the MD is carried out.''')
     simulation_steps = g2.add_argument(
         '-s','--simulation_steps', required=False, type=int, default=1000,
         help='''The number of steps to perform of MD simulation to rattle

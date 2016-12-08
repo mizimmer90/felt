@@ -14,9 +14,10 @@ import sys
 # Code
 #-----------------------------------------------------------------------------
 
+allowable_exts = ['gro','pdb']
+
 def check_filenames(filenames):
-    if type(filenames) == str
+    if type(filenames) == str:
         filenames = np.loadtxt(filenames)
     for filename in filenames:
-        
-        
+        print(filename)    

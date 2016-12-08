@@ -31,7 +31,6 @@ class core_sampling():
         self.spring_const = self.args.spring_const
         self.bottom_width = self.args.bottom_width
         self.rattle_distance = self.args.rattle_distance
-        self.premin_steps = self.args.premin_steps
         self.simulation_steps = self.args.simulation_steps
         self.postmin_steps = self.args.postmin_steps
         self.anneal = self.args.anneal
@@ -51,7 +50,6 @@ class core_sampling():
         print("MD spring const:\t\t"+str(self.spring_const))
         print("MD bottomw width:\t\t"+str(self.bottom_width))
         print("MD rattle distance:\t\t"+str(self.rattle_distance))
-        print("Pre-minimization steps:\t\t"+str(self.premin_steps))
         print("MD steps:\t\t\t"+str(self.simulation_steps))
         print("Post-minimization steps:\t"+str(self.postmin_steps))
         if self.anneal:
