@@ -46,24 +46,29 @@ class core_sampling():
         print("Allowable mutations:\t\t"+str(self.residues_and_mutations))
         print("Output directory:\t\t"+str(self.output_name))
         print("Protein Forcefield:\t\t"+str(self.forcefield))
-        print("Energy error cutoff:\t\t"+str(self.energy_error))
-        print("MD spring const:\t\t"+str(self.spring_const))
-        print("MD bottomw width:\t\t"+str(self.bottom_width))
-        print("MD rattle distance:\t\t"+str(self.rattle_distance))
+        print("Energy error cutoff:\t\t"+str(self.energy_error)+" kJ/mol")
+        print("MD spring const:\t\t"+str(self.spring_const)+" kJ/mol/nm")
+        print("MD bottomw width:\t\t"+str(self.bottom_width)+" nm")
+        print("MD rattle distance:\t\t"+str(self.rattle_distance)+" nm")
         print("MD steps:\t\t\t"+str(self.simulation_steps))
         print("Post-minimization steps:\t"+str(self.postmin_steps))
         if self.anneal:
             print("Annealing initial sidechains:\tTrue")
-            print("Annealing spring_const:\t\t"+str(self.anneal_spring_const))
-            print("Annealing temperature range:\t"+str(self.anneal_temp_range))
+            print("Annealing spring_const:\t\t"+str(self.anneal_spring_const)+" kJ/mol/nm")
+            print("Annealing temperature range:\t"+str(self.anneal_temp_range)+" K")
             print("Anneal MD steps:\t\t"+str(self.anneal_steps))
         else:
             print("Annealing initial sidechains:\tFalse")
         print("Rotate mutations by chi1:\t"+str(self.rotate_chi1))
 
     def check_basic_inputs(self):
-        error_checking.check_filenames(self.structure_filenames)
-
+        self.structure_filenames = error_checking.check_filenames(
+            self.structure_filenames)
+        error_checking.check_runs(self.runs)
+        error_checking.check_max_mutations(self.max_mutations)
+        self.residues_and_mutations = \
+            error_checking.check_residues_and_mutations(
+                self.residues_and_mutatons)
 
 
 

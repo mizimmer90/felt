@@ -1,4 +1,4 @@
-#!/Users/maxwell/anaconda3/bin/python
+#!/home/maxwell/anaconda3/bin/python
 import sys
 from felt.scripts.felt import main
 
