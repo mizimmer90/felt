@@ -13,3 +13,7 @@ class ImproperInputRange(Exception):
 class ImproperMutations(Exception):
     '''The mutations file is invalid.'''
     pass
+
+class PathExists(Exception):
+    '''The specified path already exists.'''
+    pass

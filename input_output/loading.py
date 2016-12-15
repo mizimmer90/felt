@@ -1,10 +1,10 @@
-# Author: Maxwell Zimmerman <mizimmer@wustl.edu>
+# Author: Maxwell I. Zimmerman
 # Copyright (c) 2016, Washington University
-# All rights reserved.
+# Washington University in St. Louis
 
-#-----------------------------------------------------------------------------
+##############################################################################
 # Imports
-#-----------------------------------------------------------------------------
+##############################################################################
 
 import mdtraj as md
 import numpy as np
@@ -14,9 +14,9 @@ from ..exceptions import ImproperStructureFiles, ImproperInputRange, ImproperMut
 from ..tools import pdb_tools
 from pdbfixer import PDBFixer
 
-#-----------------------------------------------------------------------------
+##############################################################################
 # Code
-#-----------------------------------------------------------------------------
+##############################################################################
 
 def check_filenames(filenames):
     if len(filenames) == 1:

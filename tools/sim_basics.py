@@ -1,9 +1,10 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Feb 28 12:54:27 2016
+# Author: Maxwell I. Zimmerman, Gregory R. Bowman
+# Copyright (c) 2016, Washington University
+# Washington University in St. Louis
 
-@author: gbowman
-"""
+##############################################################################
+# Imports
+##############################################################################
 
 from __future__ import print_function, division, absolute_import
 
@@ -13,6 +14,32 @@ import scipy.spatial.distance
 import simtk.openmm.app as app
 import simtk.openmm as op
 import simtk.unit as unit
+
+##############################################################################
+# Code
+##############################################################################
+
+def _update_mdtraj_residues(fixer_top,mdtraj_top):
+    res_names = np.array(
+        [res.name for res in list(fixer_top.residues())],dtype=str)
+    res_ids = np.array(
+        [res.id for res in list(fixer_top.residues())],dtype=int)
+    for num in range(len(list(mdtraj_top.residues))):
+        list(mdtraj_top.residues)[num].name = res_names[num]
+        list(mdtraj_top.residues)[num].resSeq = res_ids[num]
+    return mdtraj_top
+
+def mdtraj_top_from_openmm(fixer_top):
+    tmp_pdb_top = md.Topology.from_openmm(fixer_top)
+    pdb_top = _update_mdtraj_residues(fixer_top,tmp_pdb_top)
+    return pdb_top
+
+def pdb_from_fixer(fixer):
+    fixer_top = fixer.topology
+    positions = fixer.positions
+    pdb_top = mdtraj_top_from_openmm(fixer_top)
+    pdb = create_mdtraj_from_pos(positions,pdb_top)
+    return pdb
     
 def create_mdtraj_from_pos(op_pos, top):
     t = md.Trajectory(op_pos/unit.nanometers, top)
@@ -60,11 +87,9 @@ def setup_sim_cartesian_restraint_backbone(
 
     if atm_inds != None:
         atm_inds = np.setdiff1d(atm_inds,start_backbone_inds)
-
     if ignore_h:
         heavy_inds = start_struct.top.select_atom_indices("heavy")
         atm_inds = np.intersect1d(atm_inds, heavy_inds)
-
     if start_backbone_inds.shape[0] != ref_backbone_inds.shape[0]:
         print("ERROR: number of atom inds for the start and reference structure do not match")
         return None
@@ -73,14 +98,15 @@ def setup_sim_cartesian_restraint_backbone(
     op_top = start_struct.top.to_openmm()
 
     forcefield = app.ForceField(prot_ff, sol_ff)
-    system = forcefield.createSystem(op_top, nonbondedMethod=app.NoCutoff, constraints=None)
+    system = forcefield.createSystem(
+        op_top, nonbondedMethod=app.NoCutoff, constraints=None)
 
     # add position restraints
     if bottom_width is None:
         force = op.CustomExternalForce("0.5*k*((x-x0)^2+(y-y0)^2+(z-z0)^2)")
-
     else:
-        force = op.CustomExternalForce("0.5*k*step((x-x0)^2+(y-y0)^2+(z-z0)^2-bottom_width*bottom_width)*((x-x0)^2+(y-y0)^2+(z-z0)^2)")
+        force = op.CustomExternalForce(
+            "0.5*k*step((x-x0)^2+(y-y0)^2+(z-z0)^2-bottom_width*bottom_width)*((x-x0)^2+(y-y0)^2+(z-z0)^2)")
         force.addGlobalParameter("bottom_width", bottom_width)
     force.addGlobalParameter("k", spring_k)
     force.addPerParticleParameter("x0")
@@ -233,42 +259,31 @@ def setup_basic_sim_torsion_restraint(start_struct, ref_struct, spring_k, atm_in
 def get_energy(struct, sim=None):
      # get OpenMM representation of positions (from frame 0)
     op_pos = struct.openmm_positions(0)
-    
     # create a basic simulatoin if no sim object is provided
     if sim is None:
         sim = setup_basic_sim(struct)
-        
     sim.context.setPositions(op_pos)
     state = sim.context.getState(getEnergy=True)
     energy = state.getPotentialEnergy()/unit.kilojoule_per_mole
-    
     return energy
     
 def get_traj_energies(traj, sim=None):
     # create a basic simulatoin if no sim object is provided
     if sim is None:
         sim = setup_basic_sim(traj[0])
-        
     n_structs = len(traj)
     energies = np.inf*np.ones(n_structs)
     for i in range(n_structs):
         energies[i] = get_energy(traj[i], sim=sim)
-        
     return energies
     
 def get_traj_barrier(traj, sim=None):
     energies = get_traj_energies(traj, sim=sim)
-    
     # error if starting energy is nan
     if np.isnan(energies[0]):
         print("ERROR: starting structure in traj has nan energy")
         return energies[0]
-        
-    # make all relative to starting energy
-    #energies -= energies[0]
-    
     # ignore nan values
     energies = energies[np.where(np.isnan(energies)==False)[0]]
-    
     return energies.max()
     

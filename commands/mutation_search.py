@@ -1,22 +1,23 @@
-# Author: Maxwell Zimmerman <mizimmer@wustl.edu>
+# Author: Maxwell I. Zimmerman
 # Copyright (c) 2016, Washington University
-# All rights reserved.
+# Washington University in St. Louis
 
-#-----------------------------------------------------------------------------
+##############################################################################
 # Imports
-#-----------------------------------------------------------------------------
+##############################################################################
 
 import numpy as np
 import time
 from ..cmdline import NumpydocClassCommand, Command, argument, argument_group, exttype
+from ..input_output import output
 from ..sampling.FASTMutate import FASTMutate
 from ..sampling.RandomMutate import RandomMutate
-#-----------------------------------------------------------------------------
+
+##############################################################################
 # Imports
-#-----------------------------------------------------------------------------
+##############################################################################
 
 class MutationSearch(NumpydocClassCommand):
-#class MutationSearch(Command):
     _group = '1-search'
 
     # Mutational stuff
@@ -33,9 +34,12 @@ class MutationSearch(NumpydocClassCommand):
     residues_and_mutations = g1.add_argument(
         '-M', '--residues_and_mutations', required=False, type=str, default=None,
         help='File containing residue numbers and allowable mutations')
-    output_name = g1.add_argument(
-        '-o','--output_name', required=False, default=None, type=str,
+    output_directory = g1.add_argument(
+        '-o', '--output_directory', required=False, default=None, type=str,
         help='The name for the directory output')
+    continue_sampling =  g1.add_argument(
+        '-c','--continue_sampling', required=False, default=False, action='store_true',
+        help='Flag to continue sampling from previous run.')
 
     # Modeling stuff
     g2 = argument_group('Modeling Input')
@@ -45,6 +49,10 @@ class MutationSearch(NumpydocClassCommand):
             'amoeba2013','charmm_polar_2013'],
         default='amber03', help='''The forcefield to use for simulation and
             energy calculations''')
+    sol_forcefield = g2.add_argument(
+        '-sf', '--sol_forcefield', required=False, choices=['amber03_obc'],
+        default='amber03_obc', help='''The solvent forcefield to use for
+            simulation and energy calculations''')
     energy_error = g2.add_argument(
         '-ee', '--energy_error', required=False, default=0.0,
         help='''The maximum energy to be considered for a successful mutation.
@@ -104,7 +112,13 @@ class MutationSearch(NumpydocClassCommand):
 
     def start(self):
         self.klass.print_and_check_inputs(self)
-        pass
+        if not self.continue_sampling:
+            self.klass.create_directory_structure(self)
+            if self.anneal:
+                self.klass.anneal_initial_structures(self)
+        else:
+            output.output_status('continuing from previous run')
+            self.klass.update_sampling_data(self)
 
 class FASTMutateCommand(MutationSearch):
     klass = FASTMutate

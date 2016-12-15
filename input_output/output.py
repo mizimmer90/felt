@@ -6,23 +6,15 @@
 # Imports
 ##############################################################################
 
-from __future__ import absolute_import, print_function, division
 import numpy as np
-import os
-import sys
 import time
 
 ##############################################################################
 # Code
 ##############################################################################
 
-__all__=['RandomMutate']
-
-class RandomMutate():
-    """RandomMutate
-
-    """
-    def __init(self):
-        pass
-
-
+def output_status(comment):
+    t0 = time.localtime()
+    ftime = "[%d:%d:%d]" % (t0.tm_hour, t0.tm_min, t0.tm_sec)
+    print(ftime+" "+str(comment)+"\n")
+    return
