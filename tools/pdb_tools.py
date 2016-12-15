@@ -1,3 +1,5 @@
+import copy
+import math
 import numpy as np
 import mdtraj as md
 import simtk.unit as unit
@@ -41,7 +43,17 @@ def convert_1letter_seq(seq):
     seq = [convert_map_1letter[aa] for aa in seq]
     return seq
 
-
+def convert_3letter_seq(seq, concat_output=False):
+    """Converts a list of 3-letter amino acid seq into a single list.
+       
+       >>> convert_3letter_seq(['ALA','PHE','GLY'])
+       >>> 'AFG'
+    
+    """
+    new_seq = [convert_map_3letter[aa] for aa in seq]
+    if concat_output:
+        new_seq = "".join(new_seq)
+    return new_seq
 
 def create_mdtraj_from_pos(op_pos, top):
     t = md.Trajectory(op_pos/unit.nanometers, top)
@@ -116,11 +128,6 @@ def _apply_mutations(fixer, change_list, max_attempts=5):
             print("failed to mutate residue...\tAttempt: "+str(attempts))
         attemps += 1
     return fixer_copy, success
-
-
-
-
-
 
 
 

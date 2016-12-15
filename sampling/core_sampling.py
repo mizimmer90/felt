@@ -11,7 +11,7 @@ import numpy as np
 import os
 import sys
 import time
-from ..input_control import error_checking
+from ..input_control import loading
 
 __all__=['core_sampling']
 
@@ -62,12 +62,12 @@ class core_sampling():
         print("Rotate mutations by chi1:\t"+str(self.rotate_chi1))
 
     def check_basic_inputs(self):
-        self.structure_filenames = error_checking.check_filenames(
+        self.structure_filenames = loading.check_filenames(
             self.structure_filenames)
-        error_checking.check_runs(self.runs)
-        error_checking.check_max_mutations(self.max_mutations)
+        loading.check_runs(self.runs)
+        loading.check_max_mutations(self.max_mutations)
         self.residues_and_mutations = \
-            error_checking.check_residues_and_mutations(
+            loading.check_residues_and_mutations(
                 self.residues_and_mutatons)
 
 
