@@ -6,16 +6,17 @@
 # Imports
 #-----------------------------------------------------------------------------
 
+import mdtraj as md
 import numpy as np
 import os
 import sys
 from ..exceptions import ImproperStructureFiles, ImproperInputRange, ImproperMutations
 from ..tools import pdb_tools
+from pdbfixer import PDBFixer
 
 #-----------------------------------------------------------------------------
 # Code
 #-----------------------------------------------------------------------------
-
 
 def check_filenames(filenames):
     if len(filenames) == 1:
@@ -39,6 +40,26 @@ def check_filenames(filenames):
             raise ImproperStructureFiles(
                 "The file '{}' does not exist.".format(filename))
     return filenames
+
+def load_references(filenames):
+    try:
+        pdbs = md.load(filenames[0])
+    except:
+        raise ImproperStructureFiles(
+            'Could not load pdb file "{}"'.format(filenames[0]))
+    for filename in filenames:
+        try:
+            pdbs = pdbs.join(md.load(filename))
+        except:
+            raise ImproperStructureFiles(
+                'Could not load pdb file "{}"'.format(filename))
+    return pdbs
+
+def load_fixers(filenames):
+    fixers = []
+    for filename in filenames:
+        fixers.append(PDBFixer(filename=filename))
+    return fixers
 
 def check_runs(runs):
     if runs <= 0:
@@ -76,7 +97,6 @@ def check_residues_and_mutations(residues_and_mutations):
     res_data = []
     for line_num in range(len(res_file_info)):
         res_num = int(res_file_info[line_num][0])
-        print(res_num)
         if len(res_file_info[line_num]) == 1:
             allowed_aas = "".join(pdb_tools.protein_residues_1letter)
         elif len(res_file_info[line_num]) == 2:
@@ -102,14 +122,54 @@ def check_residues_and_mutations(residues_and_mutations):
         res_data.append([res_num,allowed_aas])
     return res_data
 
+def generate_residues_and_mutations(pdb):
+    '''This generates an array of residues and allowed mutations from a pdb.
+       It specifies that all residues can use all amino acids.'''
+    allowed_aas = "".join(pdb_tools.protein_residues_1letter)
+    res_data = [[res.resSeq,allowed_aas] for res in pdb.topology.residues]
+    return res_data
 
+def check_spring_const(spring_const):
+    if spring_const <= 0:
+        raise ImproperInputRange(
+            'Spring constant must be greater than zero.')
+    return
 
+def check_bottom_width(bottom_width):
+    if bottom_width <= 0:
+        raise ImproperInputRange(
+            'Bottom width for flat-bottom potential must'+\
+            ' be greater than zero.')
+    return
 
+def check_rattle_distance(rattle_distance):
+    if rattle_distance <= 0:
+        raise ImproperInputRange(
+            'Mutation rattle distance must be greater than zero.')
+    return
 
+def check_simulation_steps(simulation_steps):
+    if simulation_steps <= 0:
+        raise ImproperInputRange(
+            'Number of simulation steps must be greater than zero.')
+    return
 
+def check_postmin_steps(postmin_steps):
+    if postmin_steps <= 0:
+        raise ImproperInputRange(
+            'The post-simulation minimization steps must be greater'+\
+            ' than zero.')
+    return
 
+def check_anneal_spring_const(anneal_spring_const):
+    if anneal_spring_const  <= 0:
+        raise ImproperInputRange(
+            'The spring constant for annealing must be greater than zero.')
+    return
 
-
-
-
-
+def check_anneal_steps(anneal_steps):
+    if anneal_steps <= 0:
+        raise ImproperInputRange(
+            'The number of simulation steps per temperature interval when'+\
+            ' annealing must be greater than zero.')
+    return

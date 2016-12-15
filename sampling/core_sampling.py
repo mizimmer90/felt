@@ -61,14 +61,34 @@ class core_sampling():
             print("Annealing initial sidechains:\tFalse")
         print("Rotate mutations by chi1:\t"+str(self.rotate_chi1))
 
-    def check_basic_inputs(self):
+    def load_basic_inputs(self):
+        # Check the validity of structure filenames and load mdtraj 
+        # and PDBFixer objects.
         self.structure_filenames = loading.check_filenames(
             self.structure_filenames)
+        self.references = loading.load_references(self.structure_filenames)
+        self.fixers = loading.load_fixers(self.structure_filenames)
+        # Check that the runs specified and maximum mutations are reasonable.
         loading.check_runs(self.runs)
         loading.check_max_mutations(self.max_mutations)
-        self.residues_and_mutations = \
-            loading.check_residues_and_mutations(
-                self.residues_and_mutatons)
+        # If an allowable mutation list is specified, load it and ensure that
+        # amino acids are valid.
+        if self.residues_and_mutations:
+            self.residues_and_mutations = \
+                loading.check_residues_and_mutations(
+                    self.residues_and_mutations)
+        else:
+            self.residues_and_mutations = \
+                loading.generate_residues_and_mutations(
+                    self.references[0])
+        loading.check_spring_const(self.spring_const)
+        loading.check_bottom_width(self.bottom_width)
+        loading.check_rattle_distance(self.rattle_distance)
+        loading.check_simulation_steps(self.simulation_steps)
+        loading.check_postmin_steps(self.postmin_steps)
+        loading.check_anneal_spring_const(self.anneal_spring_const)
+        loading.check_anneal_steps(self.anneal_steps)
+
 
 
 
