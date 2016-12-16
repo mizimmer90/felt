@@ -35,7 +35,7 @@ class core_sampling():
         self.postmin_steps = self.args.postmin_steps
         self.anneal = self.args.anneal
         self.anneal_spring_const = self.args.anneal_spring_const
-        self.anneal_temp_range = self.anneal_temp_range
+        self.anneal_temp_range = self.args.anneal_temp_range
         self.anneal_steps = self.args.anneal_steps
         self.rotate_chi1 = self.args.rotate_chi1
 
@@ -48,11 +48,11 @@ class core_sampling():
         print("Protein Forcefield:\t\t"+str(self.forcefield))
         print("Energy error cutoff:\t\t"+str(self.energy_error)+" kJ/mol")
         print("MD spring const:\t\t"+str(self.spring_const)+" kJ/mol/nm")
-        print("MD bottomw width:\t\t"+str(self.bottom_width)+" nm")
+        print("MD bottom width:\t\t"+str(self.bottom_width)+" nm")
         print("MD rattle distance:\t\t"+str(self.rattle_distance)+" nm")
         print("MD steps:\t\t\t"+str(self.simulation_steps))
         print("Post-minimization steps:\t"+str(self.postmin_steps))
-        if self.anneal:
+        if self.anneal == 'True':
             print("Annealing initial sidechains:\tTrue")
             print("Annealing spring_const:\t\t"+str(self.anneal_spring_const)+" kJ/mol/nm")
             print("Annealing temperature range:\t"+str(self.anneal_temp_range)+" K")
@@ -62,6 +62,9 @@ class core_sampling():
         print("Rotate mutations by chi1:\t"+str(self.rotate_chi1))
 
     def load_basic_inputs(self):
+        t0 = time.localtime()
+        ftime = "[%d:%d.%d]" % (t0.tm_hour, t0.tm_min, t0.tm_sec)
+        print(ftime + " loading input data\n")
         # Check the validity of structure filenames and load mdtraj 
         # and PDBFixer objects.
         self.structure_filenames = loading.check_filenames(
@@ -86,8 +89,11 @@ class core_sampling():
         loading.check_rattle_distance(self.rattle_distance)
         loading.check_simulation_steps(self.simulation_steps)
         loading.check_postmin_steps(self.postmin_steps)
-        loading.check_anneal_spring_const(self.anneal_spring_const)
-        loading.check_anneal_steps(self.anneal_steps)
+        if self.anneal == 'True':
+            loading.check_anneal_spring_const(self.anneal_spring_const)
+            loading.check_anneal_steps(self.anneal_steps)
+            self.anneal_temp_range = loading.check_anneal_temp_range(
+                self.anneal_temp_range)
 
 
 

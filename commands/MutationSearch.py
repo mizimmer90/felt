@@ -72,15 +72,15 @@ class MutationSearch(NumpydocClassCommand):
         '-P','--postmin_steps', required=False, type=int, default=1000,
         help='The number of minimization steps to perform after simulation.')
     anneal = g2.add_argument(
-        '-a','--anneal', required=False, type=bool, default=True,
-        help='Optionally anneal sidechains of starting states.')
+        '-a', '--anneal', required=False, choices=['True','False'],
+        default='True', help='Optionally anneal sidechains of starting states.')
     anneal_spring_const = g2.add_argument(
         '-ak','--anneal_spring_const', required=False, type=float, default=15.0,
         help='''The spring constant to use for restraining backbone atoms 
             during the initial annealing steps.''')
     anneal_temp_range = g2.add_argument(
         '-at','--anneal_temp_range', required=False, type=str,
-        default='200:0.1:350', help='''The temperature range to anneal
+        default="200:0.1:350", help='''The temperature range to anneal
             sidechains if annealing initial structures. An input of 
             200:0.1:350 will start at 200K and increase the temp to
             350K in increments of 0.1K.''')

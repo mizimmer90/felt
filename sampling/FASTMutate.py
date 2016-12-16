@@ -58,8 +58,9 @@ class FASTMutate(core_sampling):
         print("Landscape filename:\t\t"+str(self.landscape))
         print("FAST-statistics:\t\t"+str(self.statistics))
         print("\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-        print("~~~~                    Validating Inputs                       ~~~~")
+        print("~~~~                                                            ~~~~")
         print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n")
+        print
         core_sampling.load_basic_inputs(self)
         return
 

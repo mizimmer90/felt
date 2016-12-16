@@ -173,3 +173,40 @@ def check_anneal_steps(anneal_steps):
             'The number of simulation steps per temperature interval when'+\
             ' annealing must be greater than zero.')
     return
+
+def check_anneal_temp_range(temp_range):
+    try:
+        start,step,stop = [float(t) for t in temp_range.split(":")]
+    except:
+        raise ImproperInputRange(
+            'The annealing temperature range format was not valid. '+\
+            'A valid format would be "start:step:stop"')
+    if start <= 0:
+        raise ImproperInputRange(
+            'The starting temperature for '+\
+            'annealing must be greater than zero.')
+    if step <= 0:
+        raise ImproperInputRange(
+            'The annealing step must be greater than zero.')
+    if stop <= 0:
+        raise ImproperInputRange(
+            'The final temperature for '+\
+            ' annealing must be greater than zero.')
+    if stop <= start:
+        raise ImproperInputRange(
+            'The final annealing temperature must be greater '+\
+            'than the starting temperature.')
+    if step > (stop-start):
+        raise ImproperInputRange(
+            'The annealing step should be smaller than the difference '+\
+            'between final and initial temperatures.')
+    return [start,step,stop]
+
+
+
+
+
+
+
+
+
