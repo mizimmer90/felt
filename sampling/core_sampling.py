@@ -14,7 +14,7 @@ import sys
 import time
 from ..exceptions import PathExists
 from ..input_output import loading, output
-from ..tools import minimizers,utils
+from ..tools import minimizers,sim_basics,utils
 
 __all__=['core_sampling']
 
@@ -24,6 +24,7 @@ __all__=['core_sampling']
 
 class core_sampling(object):
     def __init__(self):
+        # Initialize arguments
         self.structure_filenames = self.args.structure_filenames
         self.runs = self.args.runs
         self.max_mutations = self.args.max_mutations
@@ -76,6 +77,8 @@ class core_sampling(object):
         # and PDBFixer objects.
         self.structure_filenames = loading.check_filenames(
             self.structure_filenames)
+        self.base_filenames = [
+            filename.split("/")[-1] for filename in self.structure_filenames]
         self.references = loading.load_references(self.structure_filenames)
         self.fixers = loading.load_fixers(self.structure_filenames)
         # Check that the runs specified and maximum mutations are reasonable.
@@ -118,20 +121,31 @@ class core_sampling(object):
                 'The specified output directory already exists! '+\
                 'If restarting a previous run, specify the '+\
                 'continue_sampling flag.')
-        else:
-            self.run_number = 0
-            self.run_directory = self.output_directory+'RUN'+\
-                str(self.run_number)+'/'
-            self.data_directory = self.output_directory+'Data/'
-            cmd1 = 'mkdir '+self.output_directory
-            cmd2 = 'mkdir '+self.run_directory
-            cmd3 = 'mkdir '+self.data_directory
-            cmds = [cmd1, cmd2, cmd3]
-            utils.run_commands(cmds)
+        self.run_number = 0
+        self.run_directory = self.output_directory+'RUN'+\
+            str(self.run_number)+'/'
+        self.data_directory = self.output_directory+'Data/'
+        cmd1 = 'mkdir '+self.output_directory
+        cmd2 = 'mkdir '+self.run_directory
+        cmd3 = 'mkdir '+self.data_directory
+        cmds = [cmd1, cmd2, cmd3]
+        utils.run_commands(cmds)
+        
+
+    def initialize_variables(self):
+        self.Aij = []
+        self.Aij_filename = os.path.abspath(self.data_directory+"Aij.npy")
+        self.energies = []
+        self.energies_filename = os.path.abspath(
+            self.data_directory+"energies.npy")
+        self.seqs_1d = []
+        self.seqs_1d_filename = os.path.abspath(
+            self.data_directory+"seqs_1d.npy")
 
     def anneal_initial_structures(self):
-        output.output_status('annealing starting structures')        
+        output.output_status('annealing %d starting structures' % len(self.fixers)) 
         for fixer_num in range(len(self.fixers)):
+            output.output_status('annealing structure %d' % fixer_num)
             self.fixers[fixer_num] = minimizers.anneal_fixer_sidechains(
                 self.fixers[fixer_num], spring_const=self.anneal_spring_const,
                 bottom_width=0.001, T_min=self.anneal_temp_range[0],
@@ -139,6 +153,27 @@ class core_sampling(object):
                 T_max=self.anneal_temp_range[2], steps_per_T=self.anneal_steps,
                 prot_ff=self.forcefield, sol_ff=self.sol_forcefield)
 
+    def append_energies(self):
+        new_energies = []
+        for num in range(len(self.fixers)):
+            pdb = sim_basics.pdb_from_fixer(self.fixers[num])
+            sim = sim_basics.setup_basic_sim(
+                pdb, prot_ff=self.forcefield, sol_ff=self.sol_forcefield)
+            new_energies.append(sim_basics.get_energy(pdb, sim=sim))
+        self.energies.append(new_energies)
+
+    def save_base_run_data(self):
+        # Save structures
+        output.output_status('saving pdbs')
+        output_filenames = [
+            os.path.abspath(
+                self.run_directory+filename)
+            for filename in self.base_filenames]
+        output.save_fixers_as_pdbs(self.fixers, output_names=output_filenames)
+        # Get and save energies
+        output.output_status('saving energies')
+        core_sampling.append_energies(self)
+        np.save(self.energies_filename,self.energies)
 
     def update_sampling_data(self):
         pass

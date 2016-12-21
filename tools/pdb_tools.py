@@ -136,4 +136,4 @@ def _apply_mutations(fixer, change_list, max_attempts=5):
         attemps += 1
     return fixer_copy, success
 
-
+#def rotate_sidechain(pdb, 

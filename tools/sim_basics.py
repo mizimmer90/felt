@@ -45,15 +45,17 @@ def create_mdtraj_from_pos(op_pos, top):
     t = md.Trajectory(op_pos/unit.nanometers, top)
     return t
     
-def setup_basic_sim(struct, prot_ff='amber03.xml', sol_ff='amber03_obc.xml', T=300, dt=0.002):
+def setup_basic_sim(
+        struct, prot_ff='amber03.xml', sol_ff='amber03_obc.xml', T=300,
+        dt=0.002, gpu_id=0):
     # get OpenMM representation of topology    
     op_top = struct.top.to_openmm()
-    
     forcefield = app.ForceField(prot_ff, sol_ff)
     system = forcefield.createSystem(op_top, nonbondedMethod=app.NoCutoff, constraints=None)
     integrator = op.LangevinIntegrator(T*unit.kelvin, 1./unit.picosecond, dt*unit.picoseconds)
-    simulation = app.Simulation(op_top, system, integrator)
-
+    platform = op.Platform.getPlatformByName('CUDA')
+    properties = {'CudaPrecision': 'mixed', 'CudaDeviceIndex': str(gpu_id)}
+    simulation = app.Simulation(op_top, system, integrator, platform, properties)
     return simulation
     
 def _choose_closest_symetry_mate(start_struct, start_ind, ref_struct, ref_ind, possible_atm_names):

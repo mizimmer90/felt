@@ -64,6 +64,9 @@ class FASTMutate(core_sampling):
         core_sampling.load_basic_inputs(self)
         return
 
+    def save_run_data(self):
+        core_sampling.save_base_run_data(self)
+
 def load_landscape(filename):
     landscape = np.loadtxt(filename)
     return landscape

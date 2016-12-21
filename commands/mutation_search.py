@@ -114,8 +114,10 @@ class MutationSearch(NumpydocClassCommand):
         self.klass.print_and_check_inputs(self)
         if not self.continue_sampling:
             self.klass.create_directory_structure(self)
+            self.klass.initialize_variables(self)
             if self.anneal:
                 self.klass.anneal_initial_structures(self)
+            self.klass.save_run_data(self)
         else:
             output.output_status('continuing from previous run')
             self.klass.update_sampling_data(self)
