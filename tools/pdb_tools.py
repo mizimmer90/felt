@@ -9,6 +9,7 @@ import copy
 import math
 import numpy as np
 import mdtraj as md
+import scipy.linalg
 import simtk.unit as unit
 from pdbfixer import PDBFixer
 from . import sim_basics, minimizers
@@ -127,4 +128,66 @@ def _apply_mutations(fixer, change_list, max_attempts=5):
         attemps += 1
     return fixer_copy, success
 
-#def rotate_sidechain(pdb, 
+def rodrigues_rotation(v, k, theta, center=None):
+    if center is None:
+        center = np.array([0,0,0])
+    v_centered = v-center
+    first_term = v_centered*np.cos(theta)
+    second_term = np.cross(k,v_centered)*np.sin(theta)
+    third_term = k*np.dot(k,v_centered)*(1-np.cos(theta))
+    rotated_v = first_term+second_term+third_term
+    return rotated_v+center
+
+def __get_iis_and_vec(pdb, res_num):
+    '''This is a helper function to rotate_chi1. Given the pdb and residue
+       number, it will return the indices of atoms to rotate, the normalized
+       vector to rotate along, and the center-coordinate for rotation
+       reference (the beta-carbon coordinate).
+    '''
+    # Get the atomic indices of the atoms to rotate
+    top = pdb.topology
+    coords = pdb.xyz[0]
+    backbone_names = ['CA','CB','N','O','H','HA']
+    md_search_string = "name "+" or name ".join(backbone_names)
+    backbone_iis = top.select(md_search_string)
+    res_iis = top.select("resSeq %d" % res_num)
+    rotate_iis = np.setdiff1d(res_iis,backbone_iis)
+    # Get the vector of rotation (alpha-carbon to beta-carbon)
+    alpha_ii = top.select("resSeq %d and name CA" % res_num)[0]
+    beta_ii = top.select("resSeq %d and name CB" % res_num)[0]
+    alpha_coord = coords[alpha_ii]
+    beta_coord = coords[beta_ii]
+    unnormed_rot_vec = beta_coord-alpha_coord
+    rotation_vec = unnormed_rot_vec/scipy.linalg.norm(unnormed_rot_vec)
+    return rotate_iis,rotation_vec,beta_coord
+
+def rotate_chi1(pdb, res_num, thetas=None):
+    top = pdb.topology
+    res_nums = np.array([res.resSeq for res in top.residues])
+    res_names = np.array([res.name for res in top.residues])
+    if not np.any(res_nums==res_num):
+        raise
+    res_ii = np.where(res_nums==res_num)
+    res_name = res_names[res_ii]
+    if res_name == 'PRO':
+        raise
+    if res_name == 'GLY':
+        raise
+    if res_name == 'ALA':
+        raise
+    rotate_iis,rotation_vec,center_coord = __get_iis_and_vec(pdb,res_num)
+    if thetas is None:
+        thetas = [math.pi*2/3., np.pi*4/3.]
+    new_pdbs = [pdb]
+    for theta in thetas:
+        new_pdb = copy.deepcopy(pdb)
+        for ii in rotate_iis:
+            new_pdb.xyz[0][ii] = rodrigues_rotation(
+                new_pdb.xyz[0][ii], rotation_vec, theta, center=center_coord)
+        new_pdb = minimizers.minimize(new_pdb,max_iterations=100)
+        new_pdbs.append(new_pdb)
+    return new_pdbs
+        
+
+
+
