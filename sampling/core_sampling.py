@@ -14,7 +14,7 @@ import sys
 import time
 from ..exceptions import PathExists
 from ..input_output import loading, output
-from ..tools import minimizers,sim_basics,utils
+from ..tools import minimizers,pdb_tools,sim_basics,utils
 
 __all__=['core_sampling']
 
@@ -130,7 +130,6 @@ class core_sampling(object):
         cmd3 = 'mkdir '+self.data_directory
         cmds = [cmd1, cmd2, cmd3]
         utils.run_commands(cmds)
-        
 
     def initialize_variables(self):
         self.Aij = []
@@ -141,6 +140,9 @@ class core_sampling(object):
         self.seqs_1d = []
         self.seqs_1d_filename = os.path.abspath(
             self.data_directory+"seqs_1d.npy")
+        self.seqs_3letter = []
+        self.seqs_3letter_filename = os.path.abspath(
+            self.data_directory+"seqs_3letter.npy")
 
     def anneal_initial_structures(self):
         output.output_status('annealing %d starting structures' % len(self.fixers)) 
@@ -162,6 +164,14 @@ class core_sampling(object):
             new_energies.append(sim_basics.get_energy(pdb, sim=sim))
         self.energies.append(new_energies)
 
+    def append_seqs(self):
+        new_seq_3letter = pdb_tools.get_sequence(
+            self.fixers[0], res_subset=self.residues_and_mutations['res'])
+        self.seqs_3letter.append(new_seq_3letter)
+        self.seqs_1d.append(
+            pdb_tools.convert_3letter_seq(
+                new_seq_3letter, concat_output=True))
+
     def save_base_run_data(self):
         # Save structures
         output.output_status('saving pdbs')
@@ -174,14 +184,14 @@ class core_sampling(object):
         output.output_status('saving energies')
         core_sampling.append_energies(self)
         np.save(self.energies_filename,self.energies)
+        # Get and save sequence info
+        output.output_status('updating sequences')
+        core_sampling.append_seqs(self)
+        np.save(self.seqs_1d_filename, self.seqs_1d)
+        np.save(self.seqs_3letter_filename, self.seqs_3letter)
 
     def update_sampling_data(self):
         pass
-
-
-
-
-
 
 
 

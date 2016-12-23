@@ -18,16 +18,21 @@ from pdbfixer import PDBFixer
 # Code
 ##############################################################################
 
+def _load_data(filename):
+    file_to_load = open(filename,'r')
+    file_data = np.array(file_to_load.readlines(),dtype=str)
+    file_to_load.close()
+    return file_data[np.where(file_data!='\n')]
+
 def check_filenames(filenames):
     if len(filenames) == 1:
         try:
-            struct_file = open(filenames[0],'r')
+            file_data = _load_data(filenames[0])
             filenames = [
-                filename.split()[0] for filename in struct_file.readlines()]
-            struct_file.close()
+                filename.split()[0] for filename in file_data]
         except:
             raise ImproperStructureFiles(
-                "Only one file detected, and it is"+\
+                "Only one file detected, and it is "+\
                 "not a text file of more filenames.")
     for filename in filenames:
         if type(filename) is not str:
@@ -91,9 +96,8 @@ def check_residues_and_mutations(residues_and_mutations):
     if not os.path.exists(residues_and_mutations):
         raise ImproperMutations(
             'The file "{}" does not exist'.format(residues_and_mutations))
-    res_file = open(residues_and_mutations,'r')
-    res_file_info = [line.split() for line in res_file.readlines()]
-    res_file.close()
+    res_file_info = [
+        line.split() for line in _load_data(residues_and_mutations)]
     res_data = []
     for line_num in range(len(res_file_info)):
         res_num = int(res_file_info[line_num][0])
@@ -119,7 +123,8 @@ def check_residues_and_mutations(residues_and_mutations):
                 '    "10" for all residues\n'+
                 '    "10 not KLPT" for all residues except KLPT\n'+
                 '    "10 AGHRTY" for only residues AGHRTY\n')
-        res_data.append([res_num,allowed_aas])
+        res_data.append((res_num,allowed_aas))
+    res_data = np.array(res_data,dtype=[('res','int'),('seq',np.str_,20)])
     return res_data
 
 def generate_residues_and_mutations(pdb):
@@ -201,9 +206,6 @@ def check_anneal_temp_range(temp_range):
             'The annealing step should be smaller than the difference '+\
             'between final and initial temperatures.')
     return [start,step,stop]
-
-
-
 
 
 

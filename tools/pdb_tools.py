@@ -66,27 +66,18 @@ def convert_3letter_seq(seq, concat_output=False):
         new_seq = "".join(new_seq)
     return new_seq
 
-#def _update_mdtraj_residues(fixer_top,mdtraj_top):
-#    res_names = np.array(
-#        [res.name for res in list(fixer_top.residues())],dtype=str)
-#    res_ids = np.array(
-#        [res.id for res in list(fixer_top.residues())],dtype=int)
-#    for num in range(len(list(mdtraj_top.residues))):
-#        list(mdtraj_top.residues)[num].name = res_names[num]
-#        list(mdtraj_top.residues)[num].resSeq = res_ids[num]
-#    return mdtraj_top
-
-#def mdtraj_top_from_openmm(fixer_top):
-#    tmp_pdb_top = md.Topology.from_openmm(fixer_top)
-#    pdb_top = _update_mdtraj_residues(fixer_top,tmp_pdb_top)
-#    return pdb_top
-
-#def pdb_from_fixer(fixer):
-#    fixer_top = fixer.topology
-#    positions = fixer.positions
-#    pdb_top = mdtraj_top_from_openmm(fixer_top)
-#    pdb = basics.create_mdtraj_from_pos(positions,pdb_top)
-#    return pdb
+def get_sequence(fixer,res_subset=None):
+    current_residues = list(fixer.topology.residues())
+    full_sequence = np.array([res.name for res in current_residues])
+    if res_subset is None:
+        current_seq_3letter = full_sequence
+    else:
+        full_res_nums = np.array([int(res.id) for res in current_residues])
+        current_seq_3letter = []
+        for num in res_subset:
+            ii = np.where(full_res_nums==num)
+            current_seq_3letter.append(full_sequence[ii][0])
+    return current_seq_3letter
 
 def _fix_pdb(fixer, minimize=True, mdtraj_output=False):
     '''
