@@ -94,7 +94,7 @@ def _fix_pdb(fixer, minimize=True, mdtraj_output=False):
         if mdtraj_output:
             return pdb
         else:
-            fixer.positions = pdb.xyz[0]
+            fixer.positions = pdb.openmm_positions(0)
             return fixer
     else:
         if mdtraj_output:
@@ -125,7 +125,7 @@ def _apply_mutations(fixer, change_list, max_attempts=5):
                 raise
         except:
             print("failed to mutate residue...\tAttempt: "+str(attempts))
-        attemps += 1
+        attempts += 1
     return fixer_copy, success
 
 def rodrigues_rotation(v, k, theta, center=None):
@@ -184,7 +184,7 @@ def rotate_chi1(pdb, res_num, thetas=None):
         for ii in rotate_iis:
             new_pdb.xyz[0][ii] = rodrigues_rotation(
                 new_pdb.xyz[0][ii], rotation_vec, theta, center=center_coord)
-        new_pdb = minimizers.minimize(new_pdb,max_iterations=100)
+        new_pdb = minimizers.minimize(new_pdb,max_iterations=2000)
         new_pdbs.append(new_pdb)
     return new_pdbs
         

@@ -50,7 +50,9 @@ class MutationSearch(NumpydocClassCommand):
         default='amber03', help='''The forcefield to use for simulation and
             energy calculations''')
     sol_forcefield = g2.add_argument(
-        '-sf', '--sol_forcefield', required=False, choices=['amber03_obc'],
+        '-sf', '--sol_forcefield', required=False, choices=[
+            'amber96_obc','amber99_obc','amber03_obc',
+            'amber10_obc','amoeba2013_gk'],
         default='amber03_obc', help='''The solvent forcefield to use for
             simulation and energy calculations''')
     energy_error = g2.add_argument(
