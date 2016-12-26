@@ -17,3 +17,7 @@ class ImproperMutations(Exception):
 class PathExists(Exception):
     '''The specified path already exists.'''
     pass
+
+class ImproperDihedralRotation(Exception):
+    '''The specified dihedral cannot be rotated.'''
+    pass

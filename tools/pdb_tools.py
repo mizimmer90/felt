@@ -13,6 +13,7 @@ import scipy.linalg
 import simtk.unit as unit
 from pdbfixer import PDBFixer
 from . import sim_basics, minimizers
+from ..exceptions import ImproperDihedralRotation
 
 ###########################################################
 # Code
@@ -39,16 +40,19 @@ protein_residues_1letter = [
     'R', 'D', 'Q', 'G', 'I', 'K', 'F', 'S', 'W', 'V']
 
 
-def select_random_mutation(exclude=False):
+def select_random_mutation(res_list=None, exclude=None):
     """Provides a random amino acid 3-letter code. Amino acids can be
        excluded from being selected. For Example:
 
     >>> select_random_mutation(exclude=['ALA','LEU'])
 
     """
-    if exclude:
-        protein_residues = np.setdiff1d(protein_residues_3letter, exclude)
-    return protein_residues[np.random.randint(len(protein_residues))]
+    if res_list is None:
+        res_list = protein_residues_3letter
+    if exclude is not None:
+        prot_res_to_select = np.setdiff1d(res_list, exclude)
+    new_res = np.random.choice(prot_res_to_select)
+    return new_res
 
 def convert_1letter_seq(seq):
     """Converts from a 1 letter amino acid to the 3 letter code"""
@@ -170,11 +174,14 @@ def rotate_chi1(pdb, res_num, thetas=None):
     res_ii = np.where(res_nums==res_num)
     res_name = res_names[res_ii]
     if res_name == 'PRO':
-        raise
+        raise ImproperDihedralRotation(
+            'PRO does not have a chi1')
     if res_name == 'GLY':
-        raise
+        raise ImproperDihedralRotation(
+            'GLY does not have a chi1')
     if res_name == 'ALA':
-        raise
+        raise ImproperDihedralRotation(
+            'ALA does not have a chi1')
     rotate_iis,rotation_vec,center_coord = __get_iis_and_vec(pdb,res_num)
     if thetas is None:
         thetas = [math.pi*2/3., np.pi*4/3.]

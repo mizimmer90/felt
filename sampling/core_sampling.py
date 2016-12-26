@@ -143,6 +143,7 @@ class core_sampling(object):
         self.seqs_3letter = []
         self.seqs_3letter_filename = os.path.abspath(
             self.data_directory+"seqs_3letter.npy")
+        self.run_to_mutate = 0
 
     def anneal_initial_structures(self):
         output.output_status('annealing %d starting structures' % len(self.fixers)) 
@@ -193,7 +194,25 @@ class core_sampling(object):
     def update_sampling_data(self):
         pass
 
+    def load_new_fixers(self, run_to_mutate):
+        output.output_status('loading new pdbs to mutate')
+        self.run_to_mutate = run_to_mutate
+        self.run_directory = self.output_directory+'RUN'+\
+            str(self.run_to_mutate)+'/'
+        input_filenames = [
+            os.path.abspath(
+                self.run_directory+filename)
+            for filename in self.base_filenames]
+        self.fixers = loading.load_fixers(input_filenames)
 
+    def select_new_mutations(self):
+        res_num,allowed_muts = np.random.choice(self.residues_and_mutations)
+        res_ii = np.where(self.residues_and_mutations['res']==res_num)
+        prev_res = self.seqs_3letter[self.run_to_mutate][res_ii[0][0]]
+        mutation_list = pdb_tools.convert_1letter_seq(allowed_muts)
+        new_res = pdb_tools.select_random_mutation(
+            res_list=mutation_list, exclude=prev_res)
+        output.output_mutation(res_num,prev_res,new_res)
 
 
 

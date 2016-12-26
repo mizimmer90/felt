@@ -131,7 +131,9 @@ def generate_residues_and_mutations(pdb):
     '''This generates an array of residues and allowed mutations from a pdb.
        It specifies that all residues can use all amino acids.'''
     allowed_aas = "".join(pdb_tools.protein_residues_1letter)
-    res_data = [[res.resSeq,allowed_aas] for res in pdb.topology.residues]
+    res_data = np.array(
+        [(res.resSeq,allowed_aas) for res in pdb.topology.residues],
+        dtype=[('res','int'),('seq',np.str_,20)])
     return res_data
 
 def check_spring_const(spring_const):
