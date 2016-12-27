@@ -28,7 +28,7 @@ def output_status(comment):
 def output_mutation(res_num,prev_res,new_res):
     ftime = _format_time()
     print(
-        ftime+" mutating residue number %d from %s to %s" \
+        ftime+" mutating residue number %d from %s to %s\n" \
         % (res_num, prev_res, new_res))
     return
 

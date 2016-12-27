@@ -13,7 +13,7 @@ import scipy.linalg
 import simtk.unit as unit
 from pdbfixer import PDBFixer
 from . import sim_basics, minimizers
-from ..exceptions import ImproperDihedralRotation
+from ..exceptions import ImproperDihedralRotation, InvalidData
 
 ###########################################################
 # Code
@@ -83,6 +83,44 @@ def get_sequence(fixer,res_subset=None):
             ii = np.where(full_res_nums==num)
             current_seq_3letter.append(full_sequence[ii][0])
     return current_seq_3letter
+
+def _is_neighbor(seq1,seq2):
+    if len(np.where(np.array(seq1)!=np.array(seq2))[0])<2:
+        neighbor = True
+    else:
+        neighbor = False
+    return neighbor
+
+def get_aij_from_neighbors(seqs):
+    aij = np.zeros((len(seqs),len(seqs)),dtype=int)
+    for i in range(len(seqs)):
+        for j in range(len(i+1,len(seqs))):
+            if _is_neighbor(seqs[i],seqs[j]):
+                aij[i,j] = 1
+                aij[j,i] = 1
+    return aij
+
+def append_aij(aij,seqs):
+    n_aij = len(aij)
+    n_new_aij = len(seqs)
+    if n_aij == n_new_aij:
+        print("Aij matrix is up to date!")
+    elif n_aij > n_new_aij:
+        raise InvalidData(
+            'Error: Aij matrix has more entries than new sequences!')
+    new_aij = np.zeros((n_new_aij,n_new_aij),dtype=int)
+    new_aij[:n_aij,:n_aij] = aij
+    for i in range(n_aij,n_new_aij):
+        for j in range(n_aij):
+            if _is_neighbor(seqs[i],seqs[j]):
+                new_aij[i,j] = 1
+                new_aij[j,i] = 1
+    for i in range(n_aij,n_new_aij):
+        for j in range(i+1,n_new_aij):
+            if _is_neighbor(seqs[i],seqs[j]):
+                new_aij[i,j] = 1
+                new_aij[j,i] = 1
+    return new_aij
 
 def _fix_pdb(fixer, minimize=True, mdtraj_output=False):
     '''
@@ -195,6 +233,21 @@ def rotate_chi1(pdb, res_num, thetas=None):
         new_pdbs.append(new_pdb)
     return new_pdbs
         
-
-
-
+def _get_restraint_iis(change_list, pdb=None, fixer=None, rattle_distance=1.0):
+    if pdb is None:
+        if fixer is None:
+            raise
+        else:
+            pdb = sim_basics.pdb_from_fixer(fixer)
+    top = pdb.topology
+    res_nums = np.array([int(mut.split("-")[1]) for mut in change_list])
+    res_iis = np.concatenate(
+        [top.select("resSeq %d" % num) for num in res_nums])
+    neighbor_iis = np.unique(
+        np.concatenate(
+            [
+                res_iis,
+                md.compute_neighbors(
+                    pdb,rattle_distance,query_indices=res_iis)[0]]))
+    all_iis = top.select("all")
+    return np.setdiff1d(all_iis,neighbor_iis)

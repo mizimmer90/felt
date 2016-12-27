@@ -91,7 +91,7 @@ def _partial_restrain_fixer_from_ref(
        fixer is an openMM object, pdb_ref is an MDTraj object"""
     pdb = sim_basics.pdb_from_fixer(fixer)
     sim_flat_bottom = sim_basics.setup_sim_cartesian_restraint_backbone(
-        pdb, pdb_ref, spring_k, bottom_width=bottom_width, dt=dt,
+        pdb, pdb_ref, spring_const, bottom_width=bottom_width, dt=dt,
         atm_inds=iis_struct, prot_ff=prot_ff, sol_ff=sol_ff)
     sim_flat_bottom.context.setPositions(fixer.positions)
     sim_flat_bottom.step(int(steps))
@@ -123,6 +123,7 @@ def relax_mutation(
     pdb = sim_basics.pdb_from_fixer(relaxed_fixer)
     min_pdb2 = minimize(pdb, sim=sim_setup, max_iterations=max_iters2)
     fixer.positions = min_pdb2.openmm_positions(0)
-    return fixer
+    energy = sim_basics.get_energy(min_pdb2,sim=sim_setup)
+    return fixer,energy
 
 

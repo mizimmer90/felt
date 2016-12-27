@@ -14,6 +14,10 @@ class ImproperMutations(Exception):
     '''The mutations file is invalid.'''
     pass
 
+class InvalidData(Exception):
+    '''The provided data is not valid.'''
+    pass
+
 class PathExists(Exception):
     '''The specified path already exists.'''
     pass

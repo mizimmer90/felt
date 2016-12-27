@@ -90,7 +90,7 @@ def setup_sim_cartesian_restraint_backbone(
     start_backbone_inds = start_struct.top.select('backbone')
     ref_backbone_inds = ref_struct.top.select('backbone')
 
-    if atm_inds != None:
+    if atm_inds is not None:
         atm_inds = np.setdiff1d(atm_inds,start_backbone_inds)
     if ignore_h:
         heavy_inds = start_struct.top.select_atom_indices("heavy")
@@ -126,7 +126,7 @@ def setup_sim_cartesian_restraint_backbone(
         atom_crd = unit.Quantity(value=ref_struct.xyz[0][ref_ind].tolist(), unit=unit.nanometers)
         force.addParticle(start_ind, atom_crd)
     # Constrain additional atoms on 'start_struct'
-    if atm_inds != None:
+    if atm_inds is not None:
         for i in range(atm_inds.shape[0]):
             start_ind = int(atm_inds[i])
 

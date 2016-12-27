@@ -73,6 +73,7 @@ class FASTMutate(core_sampling):
     def step_sequence_space_search(self, run_to_mutate):
         core_sampling.load_new_fixers(self, run_to_mutate)
         core_sampling.select_new_mutations(self) 
+        core_sampling.apply_mutations_to_fixers(self)
 
 def load_landscape(filename):
     landscape = np.loadtxt(filename)

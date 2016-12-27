@@ -121,18 +121,14 @@ class core_sampling(object):
                 'The specified output directory already exists! '+\
                 'If restarting a previous run, specify the '+\
                 'continue_sampling flag.')
-        self.run_number = 0
-        self.run_directory = self.output_directory+'RUN'+\
-            str(self.run_number)+'/'
         self.data_directory = self.output_directory+'Data/'
         cmd1 = 'mkdir '+self.output_directory
-        cmd2 = 'mkdir '+self.run_directory
-        cmd3 = 'mkdir '+self.data_directory
-        cmds = [cmd1, cmd2, cmd3]
+        cmd2 = 'mkdir '+self.data_directory
+        cmds = [cmd1, cmd2]
         utils.run_commands(cmds)
 
     def initialize_variables(self):
-        self.Aij = []
+        self.Aij = np.array([[0]])
         self.Aij_filename = os.path.abspath(self.data_directory+"Aij.npy")
         self.energies = []
         self.energies_filename = os.path.abspath(
@@ -144,6 +140,32 @@ class core_sampling(object):
         self.seqs_3letter_filename = os.path.abspath(
             self.data_directory+"seqs_3letter.npy")
         self.run_to_mutate = 0
+
+    def update_sampling_data(self):
+        # Get full path for output directory
+        self.output_directory = os.path.abspath(self.output_directory)+"/"
+        self.data_directory = self.output_directory+'Data/'
+        # Initialize and load important variables
+        self.Aij_filename = os.path.abspath(self.data_directory+"Aij.npy")
+        self.Aij = np.load(self.Aij_filename)
+        self.energies_filename = os.path.abspath(
+            self.data_directory+"energies.npy")
+        self.energies = [
+            list(energy) for energy in np.load(self.energies_filename)]
+        self.seqs_1d_filename = os.path.abspath(
+            self.data_directory+"seqs_1d.npy")
+        self.seqs_1d = [
+            list(seq) for seq in np.load(self.seqs_1d_filename)]
+        self.seqs_3letter_filename = os.path.abspath(
+            self.data_directory+"seqs_3letter.npy")
+        self.seqs_3letter = [
+            list(seq) for seq in np.load(self.seqs_3letter_filename)]
+        self.run_number = len(self.seqs_1d)-1
+        self.run_directory = self.output_directory+'RUN'+\
+            str(self.run_number)+'/'
+        loading.check_important_variables(
+            self.Aij,self.energies,self.seqs_1d,self.seqs_3letter)
+        loading.check_run_numbers(self.output_directory,self.run_number+1)
 
     def anneal_initial_structures(self):
         output.output_status('annealing %d starting structures' % len(self.fixers)) 
@@ -174,6 +196,10 @@ class core_sampling(object):
                 new_seq_3letter, concat_output=True))
 
     def save_base_run_data(self):
+        self.run_directory = self.output_directory+'RUN'+\
+            str(self.run_number)+'/'
+        cmd = 'mkdir %s' % self.run_directory
+        utils.run_commands([cmd])
         # Save structures
         output.output_status('saving pdbs')
         output_filenames = [
@@ -190,9 +216,10 @@ class core_sampling(object):
         core_sampling.append_seqs(self)
         np.save(self.seqs_1d_filename, self.seqs_1d)
         np.save(self.seqs_3letter_filename, self.seqs_3letter)
-
-    def update_sampling_data(self):
-        pass
+        # Save adjacency matrix
+        if self.run_number != 0:
+            self.Aij = pdb_tools.append_aij(self.Aij, self.seqs_3letter)
+        np.save(self.Aij_filename,self.Aij)
 
     def load_new_fixers(self, run_to_mutate):
         output.output_status('loading new pdbs to mutate')
@@ -213,6 +240,31 @@ class core_sampling(object):
         new_res = pdb_tools.select_random_mutation(
             res_list=mutation_list, exclude=prev_res)
         output.output_mutation(res_num,prev_res,new_res)
+        self.change_list = ['%s-%d-%s' % (prev_res, res_num, new_res)]
+
+    def apply_mutations_to_fixers(self):
+        new_fixers = []
+        new_energies = []
+        for num in range(len(self.fixers)):
+            output.output_status('mutating structure %d' % num)
+            mutated_fixer,success = pdb_tools._apply_mutations(
+                self.fixers[num], self.change_list)
+            restrain_iis = pdb_tools._get_restraint_iis(
+                self.change_list, fixer=mutated_fixer,
+                rattle_distance=self.rattle_distance)
+            rattled_fixer,energy = minimizers.relax_mutation(
+                mutated_fixer, self.references[num], max_iters1=0,
+                max_iters2=self.postmin_steps, md_steps=self.simulation_steps,
+                spring_const=self.spring_const, bottom_width=self.bottom_width,
+                iis_struct=restrain_iis, prot_ff=self.forcefield,
+                sol_ff=self.sol_forcefield)
+            new_fixers.append(rattled_fixer)
+            new_energies.append(energy)
+        self.fixers = new_fixers
+
+
+
+
 
 
 

@@ -115,6 +115,7 @@ class MutationSearch(NumpydocClassCommand):
         print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n")
         self.klass.print_and_check_inputs(self)
         if not self.continue_sampling:
+            self.run_number = 0
             self.klass.create_directory_structure(self)
             self.klass.initialize_variables(self)
             if self.anneal:
@@ -127,7 +128,11 @@ class MutationSearch(NumpydocClassCommand):
             run_to_mutate = self.klass.determine_run_to_mutate(self)
         # Loads fixers from 'run_to_mutate', generates a mutation, performs 
         # md on it, and saves relevant information
-        self.klass.step_sequence_space_search(self,run_to_mutate)
+        for run in range(self.run_number+1,self.runs):
+            output.output_status('~~~~~     RUN%d    ~~~~' % run)
+            self.run_number = run
+            self.klass.step_sequence_space_search(self,run_to_mutate)
+            self.klass.save_run_data(self)
 
 class FASTMutateCommand(MutationSearch):
     klass = FASTMutate

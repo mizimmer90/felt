@@ -6,11 +6,12 @@
 # Imports
 ##############################################################################
 
+import glob
 import mdtraj as md
 import numpy as np
 import os
 import sys
-from ..exceptions import ImproperStructureFiles, ImproperInputRange, ImproperMutations
+from ..exceptions import ImproperStructureFiles, ImproperInputRange, ImproperMutations, InvalidData
 from ..tools import pdb_tools
 from pdbfixer import PDBFixer
 
@@ -209,8 +210,31 @@ def check_anneal_temp_range(temp_range):
             'between final and initial temperatures.')
     return [start,step,stop]
 
+def check_run_numbers(directory,correct_nums):
+    directories = glob.glob(directory+"RUN*")
+    nums = np.array([int(path.split("RUN")[-1]) for path in directories])
+    if len(nums) != correct_nums:
+        raise ImproperInputRange(
+            'The number of runs found (%d) does not match expected number of runs (%d)' \
+            % (len(nums), correct_nums))
+    if not np.all(nums==np.array(range(len(nums)))):
+        raise ImproperInputRange('The provided runs are not sequential')
+    return
 
-
-
-
+def check_important_variables(Aij,energies,seqs_1d,seqs_3letter):
+    Aij_first,Aij_second = Aij.shape
+    if Aij_first != Aij_second:
+        raise InvalidData('Aij matrix dimensions do not match.')
+    energy_len = len(energies)
+    seqs_1d_len = len(seqs_1d)
+    seqs_3letter_len = len(seqs_3letter)
+    if not ((Aij_first == energy_len) and (Aij_first == seqs_1d_len) and \
+            (Aij_first == seqs_3letter_len)):
+        raise InvalidData(
+            'The number of entries in core variables are not consistent!\n'+\
+            'Aij dimensions: %d\n' % Aij_first +\
+            'energies: %d\n' % energy_len +\
+            'sequence list 1d: %d\n' % seqs_1d_len+\
+            'sequence list 3-letter: %d' % seqs_3letter_len)
+    return
 

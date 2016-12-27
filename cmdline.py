@@ -452,7 +452,7 @@ class App(object):
             description=self.description, formatter_class=fmt_class)
         parser.add_argument('-v', '--version',
             help="show program's version number and exit", action = 'version',
-            version='msmbuilder %s' % version.full_version)
+            version='felt %s' % version.full_version)
 
         subparsers = parser.add_subparsers(dest=self.subcommand_dest, title="commands", metavar="")
 
