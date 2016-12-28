@@ -25,3 +25,7 @@ class PathExists(Exception):
 class ImproperDihedralRotation(Exception):
     '''The specified dihedral cannot be rotated.'''
     pass
+
+class UnexpectedError(Exception):
+    '''There was an unexpected error'''
+    pass

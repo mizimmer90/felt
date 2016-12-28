@@ -8,11 +8,12 @@
 
 
 from __future__ import absolute_import, print_function, division
+import copy
 import numpy as np
 import os
 import sys
 import time
-from ..exceptions import PathExists
+from ..exceptions import PathExists,UnexpectedError
 from ..input_output import loading, output
 from ..tools import minimizers,pdb_tools,sim_basics,utils
 
@@ -155,7 +156,7 @@ class core_sampling(object):
         self.seqs_1d_filename = os.path.abspath(
             self.data_directory+"seqs_1d.npy")
         self.seqs_1d = [
-            list(seq) for seq in np.load(self.seqs_1d_filename)]
+            seq for seq in np.load(self.seqs_1d_filename)]
         self.seqs_3letter_filename = os.path.abspath(
             self.data_directory+"seqs_3letter.npy")
         self.seqs_3letter = [
@@ -169,14 +170,16 @@ class core_sampling(object):
 
     def anneal_initial_structures(self):
         output.output_status('annealing %d starting structures' % len(self.fixers)) 
+        self.energies = [[0 for i in range(len(self.fixers))]]
         for fixer_num in range(len(self.fixers)):
             output.output_status('annealing structure %d' % fixer_num)
-            self.fixers[fixer_num] = minimizers.anneal_fixer_sidechains(
-                self.fixers[fixer_num], spring_const=self.anneal_spring_const,
-                bottom_width=0.001, T_min=self.anneal_temp_range[0],
-                T_spacing=self.anneal_temp_range[1],
-                T_max=self.anneal_temp_range[2], steps_per_T=self.anneal_steps,
-                prot_ff=self.forcefield, sol_ff=self.sol_forcefield)
+            self.fixers[fixer_num],self.energies[0][fixer_num] = \
+                minimizers.anneal_fixer_sidechains(
+                    self.fixers[fixer_num], spring_const=self.anneal_spring_const,
+                    bottom_width=0.001, T_min=self.anneal_temp_range[0],
+                    T_spacing=self.anneal_temp_range[1],
+                    T_max=self.anneal_temp_range[2], steps_per_T=self.anneal_steps,
+                    prot_ff=self.forcefield, sol_ff=self.sol_forcefield)
 
     def append_energies(self):
         new_energies = []
@@ -208,8 +211,8 @@ class core_sampling(object):
             for filename in self.base_filenames]
         output.save_fixers_as_pdbs(self.fixers, output_names=output_filenames)
         # Get and save energies
-        output.output_status('saving energies')
-        core_sampling.append_energies(self)
+#        output.output_status('saving energies')
+#        core_sampling.append_energies(self)
         np.save(self.energies_filename,self.energies)
         # Get and save sequence info
         output.output_status('updating sequences')
@@ -233,12 +236,27 @@ class core_sampling(object):
         self.fixers = loading.load_fixers(input_filenames)
 
     def select_new_mutations(self):
-        res_num,allowed_muts = np.random.choice(self.residues_and_mutations)
-        res_ii = np.where(self.residues_and_mutations['res']==res_num)
-        prev_res = self.seqs_3letter[self.run_to_mutate][res_ii[0][0]]
-        mutation_list = pdb_tools.convert_1letter_seq(allowed_muts)
-        new_res = pdb_tools.select_random_mutation(
-            res_list=mutation_list, exclude=prev_res)
+        unique_mutation_attempt = 0
+        seq = self.seqs_3letter[self.run_to_mutate]
+        while True:
+            res_num,allowed_muts = np.random.choice(self.residues_and_mutations)
+            res_ii = np.where(self.residues_and_mutations['res']==res_num)
+            prev_res = self.seqs_3letter[self.run_to_mutate][res_ii[0][0]]
+            mutation_list = pdb_tools.convert_1letter_seq(allowed_muts)
+            new_res = pdb_tools.select_random_mutation(
+                res_list=mutation_list, exclude=prev_res)
+            # Test if new sequence is unique
+            new_seq = copy.copy(seq)
+            new_seq[res_ii[0][0]] = new_res
+            new_seq_1d = pdb_tools.convert_3letter_seq(
+                new_seq,concat_output=True)
+            if not np.any(np.array(self.seqs_1d)==new_seq_1d):
+                break
+            unique_mutation_attempt += 1
+            if unique_mutation_attempt >= 20:
+                raise UnexpectedError(
+                    'Unable to discover a mutation that generates a '+\
+                    'unique sequence!')
         output.output_mutation(res_num,prev_res,new_res)
         self.change_list = ['%s-%d-%s' % (prev_res, res_num, new_res)]
 
@@ -249,22 +267,36 @@ class core_sampling(object):
             output.output_status('mutating structure %d' % num)
             mutated_fixer,success = pdb_tools._apply_mutations(
                 self.fixers[num], self.change_list)
+            pdb = sim_basics.pdb_from_fixer(mutated_fixer)
             restrain_iis = pdb_tools._get_restraint_iis(
-                self.change_list, fixer=mutated_fixer,
+                self.change_list, pdb=pdb,
                 rattle_distance=self.rattle_distance)
-            rattled_fixer,energy = minimizers.relax_mutation(
-                mutated_fixer, self.references[num], max_iters1=0,
-                max_iters2=self.postmin_steps, md_steps=self.simulation_steps,
-                spring_const=self.spring_const, bottom_width=self.bottom_width,
-                iis_struct=restrain_iis, prot_ff=self.forcefield,
-                sol_ff=self.sol_forcefield)
-            new_fixers.append(rattled_fixer)
-            new_energies.append(energy)
+            if  self.rotate_chi1:
+                res_num = int(self.change_list[0].split("-")[1])
+                res_name = self.change_list[0][-3:]
+                if res_name != 'ALA' and res_name != 'PRO' \
+                        and res_name != 'GLY':
+                    output.output_status('rotating chi1 for better sampling')
+                    pdbs = pdb_tools.rotate_chi1(pdb,res_num)
+                else:
+                    pdbs = [pdb]
+            else:
+                pdbs = [pdb]
+            tmp_energies = []
+            tmp_fixers = []
+            for num in range(len(pdbs)):
+                mutated_fixer.positions = pdbs[num].openmm_positions(0)
+                rattled_fixer,energy = minimizers.relax_mutation(
+                    mutated_fixer, self.references[num], max_iters1=0,
+                    max_iters2=self.postmin_steps, md_steps=self.simulation_steps,
+                    spring_const=self.spring_const, bottom_width=self.bottom_width,
+                    iis_struct=restrain_iis, prot_ff=self.forcefield,
+                    sol_ff=self.sol_forcefield)
+                tmp_energies.append(energy)
+                tmp_fixers.append(rattled_fixer)
+            ii = np.argmin(tmp_energies)
+            new_fixers.append(tmp_fixers[ii])
+            new_energies.append(tmp_energies[ii])
+        self.energies.append(new_energies)
         self.fixers = new_fixers
-
-
-
-
-
-
 

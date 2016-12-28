@@ -131,6 +131,7 @@ class MutationSearch(NumpydocClassCommand):
         for run in range(self.run_number+1,self.runs):
             output.output_status('~~~~~     RUN%d    ~~~~' % run)
             self.run_number = run
+            run_to_mutate = self.klass.determine_run_to_mutate(self)
             self.klass.step_sequence_space_search(self,run_to_mutate)
             self.klass.save_run_data(self)
 

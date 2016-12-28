@@ -64,7 +64,7 @@ def anneal_fixer_sidechains(
         T_spacing=0.1, steps_per_T=15, dt=0.002, prot_ff='amber03.xml',
         sol_ff='amber03_obc.xml'):
     """Anneals a fixer while restraining backbone atoms
-"""
+    """
     # Setup ff params for minimization
     pdb = sim_basics.pdb_from_fixer(fixer)
     sim_setup = sim_basics.setup_basic_sim(pdb,prot_ff=prot_ff, sol_ff=sol_ff)
@@ -81,7 +81,8 @@ def anneal_fixer_sidechains(
     # Minimize p2 and output
     min_pdb2 = minimize(annealed, sim=sim_setup)
     fixer.positions = min_pdb2.openmm_positions(0)
-    return fixer
+    energy = sim_basics.get_energy(min_pdb2,sim=sim_setup)
+    return fixer,energy
 
 def _partial_restrain_fixer_from_ref(
         fixer, pdb_ref, steps=1000, spring_const=15., bottom_width=0.005, dt=0.002,
