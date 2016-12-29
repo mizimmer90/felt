@@ -251,3 +251,51 @@ def _get_restraint_iis(change_list, pdb=None, fixer=None, rattle_distance=1.0):
                     pdb,rattle_distance,query_indices=res_iis)[0]]))
     all_iis = top.select("all")
     return np.setdiff1d(all_iis,neighbor_iis)
+
+def __return_atom_ids(top):
+    atoms = np.array(list(top.atoms))
+    atom_names = np.array([atom.name for atom in atoms])
+    residues = np.array([atom.residue for atom in atoms])
+    residue_names = np.array([res.name for res in residues])
+    residue_nums = np.array([res.resSeq for res in residues])
+    compact_ids = np.array(
+        list(zip(atom_names,residue_names,residue_nums)))
+    return compact_ids
+
+def _switch_atom_ordering(
+        trj_to_switch, trj_reference, switch_ii_0, switch_ii_1):
+    atom_ref = list(trj_reference.topology.atoms)[switch_ii_0]
+    coords_0 = copy.copy(trj_to_switch.xyz[:,switch_ii_0])
+    coords_1 = copy.copy(trj_to_switch.xyz[:,switch_ii_1])
+    trj_to_switch.xyz[:,switch_ii_0] = coords_1
+    trj_to_switch.xyz[:,switch_ii_1] = coords_0
+    atom_switch = list(trj_to_switch.topology.atoms)[switch_ii_0]
+    list(trj_to_switch.topology.atoms)[switch_ii_1].name = atom_switch.name
+    list(trj_to_switch.topology.atoms)[switch_ii_1].element = atom_switch.element
+    list(trj_to_switch.topology.atoms)[switch_ii_1].index = atom_switch.index
+    list(trj_to_switch.topology.atoms)[switch_ii_1].residue = atom_switch.residue
+    list(trj_to_switch.topology.atoms)[switch_ii_0].name = atom_ref.name
+    list(trj_to_switch.topology.atoms)[switch_ii_0].element = atom_ref.element
+    list(trj_to_switch.topology.atoms)[switch_ii_0].index = atom_ref.index
+    list(trj_to_switch.topology.atoms)[switch_ii_0].residue = atom_ref.residue
+    return trj_to_switch
+
+def switch_atom_ordering(trj_to_switch, trj_reference):
+    trj_to_switch_top = trj_to_switch.topology
+    trj_to_switch_ids = __return_atom_ids(trj_to_switch_top) 
+    trj_reference_top = trj_reference.topology
+    trj_reference_ids = __return_atom_ids(trj_reference_top) 
+    iis_to_switch = np.where(
+        np.any(trj_to_switch_ids!=trj_reference_ids,axis=1))[0]
+    while len(iis_to_switch) > 0:
+        switch_ii_0 = iis_to_switch[0]
+        matching_id = trj_reference_ids[switch_ii_0]
+        switch_ii_1 = np.where(
+            np.all(
+                trj_to_switch_ids == matching_id,axis=1))[0][0]
+        trj_to_switch = _switch_atom_ordering(
+            trj_to_switch, trj_reference, switch_ii_0, switch_ii_1)
+        trj_to_switch_ids = __return_atom_ids(trj_to_switch.topology)
+        iis_to_switch = np.where(
+            np.any(trj_to_switch_ids!=trj_reference_ids,axis=1))[0]
+    return trj_to_switch 

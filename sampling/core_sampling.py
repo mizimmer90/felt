@@ -253,7 +253,7 @@ class core_sampling(object):
             if not np.any(np.array(self.seqs_1d)==new_seq_1d):
                 break
             unique_mutation_attempt += 1
-            if unique_mutation_attempt >= 20:
+            if unique_mutation_attempt >= 200:
                 raise UnexpectedError(
                     'Unable to discover a mutation that generates a '+\
                     'unique sequence!')
