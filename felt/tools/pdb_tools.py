@@ -173,12 +173,14 @@ def _apply_mutations(fixer, change_list, max_attempts=5):
 def rodrigues_rotation(v, k, theta, center=None):
     if center is None:
         center = np.array([0,0,0])
-    v_centered = v-center
-    first_term = v_centered*np.cos(theta)
-    second_term = np.cross(k,v_centered)*np.sin(theta)
-    third_term = k*np.dot(k,v_centered)*(1-np.cos(theta))
-    rotated_v = first_term+second_term+third_term
-    return rotated_v+center
+    v_centered = v - center
+    first_terms = v_centered * np.cos(theta)
+    second_terms = np.cross(k, v_centered)*np.sin(theta)
+    k_dot_vs = np.einsum('ijk,ijk->ij', [[k]], v_centered)
+    ang = 1- np.cos(theta)
+    third_terms = np.array([k*k_dot_v[:,None]*ang for k_dot_v in k_dot_vs])
+    new_coords = (first_terms + second_terms + third_terms) + center
+    return new_coords
 
 def __get_iis_and_vec(pdb, res_num):
     '''This is a helper function to rotate_chi1. Given the pdb and residue
@@ -203,7 +205,21 @@ def __get_iis_and_vec(pdb, res_num):
     rotation_vec = unnormed_rot_vec/scipy.linalg.norm(unnormed_rot_vec)
     return rotate_iis,rotation_vec,beta_coord
 
-def rotate_chi1(pdb, res_num, thetas=None):
+def rotate_chi1(pdb, res_num, thetas=None, minimize=True):
+    """Rotates a chi1 of a trajectory
+
+    Parameters
+    ----------
+    pdb : MDTraj.Trajectory object, shape [n_frames, ]
+    res_num : int
+    thetas : array, shape [n_thetas, ]
+        The degrees to rotate a chi1 in radians
+    minimize : bool
+
+    Returns
+    ----------
+    new_pdbs : array of MDTraj.Trajectory objects, shape [n_thetas, n_frames]
+    """
     top = pdb.topology
     res_nums = np.array([res.resSeq for res in top.residues])
     res_names = np.array([res.name for res in top.residues])
@@ -220,16 +236,19 @@ def rotate_chi1(pdb, res_num, thetas=None):
     if res_name == 'ALA':
         raise ImproperDihedralRotation(
             'ALA does not have a chi1')
-    rotate_iis,rotation_vec,center_coord = __get_iis_and_vec(pdb,res_num)
+    rotate_iis, rotation_vec, center_coord = __get_iis_and_vec(pdb, res_num)
     if thetas is None:
         thetas = [math.pi*2/3., np.pi*4/3.]
-    new_pdbs = [pdb]
+    new_pdbs = []
     for theta in thetas:
         new_pdb = copy.deepcopy(pdb)
-        for ii in rotate_iis:
-            new_pdb.xyz[0][ii] = rodrigues_rotation(
-                new_pdb.xyz[0][ii], rotation_vec, theta, center=center_coord)
-        new_pdb = minimizers.minimize(new_pdb,max_iterations=2000)
+        new_pdb.xyz[:, rotate_iis] = rodrigues_rotation(
+            new_pdb.xyz[:, rotate_iis], rotation_vec, theta, center=center_coord)
+        if minimize:
+            new_pdb_min = [
+                minimizers.minimize(pdb_i, max_iterations=2000)
+                for pdb_i in new_pdb]
+            new_pdb = new_pdb_min[0].join(new_pdb_min[1:])
         new_pdbs.append(new_pdb)
     return new_pdbs
         
