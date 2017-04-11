@@ -170,28 +170,35 @@ def _apply_mutations(fixer, change_list, max_attempts=5):
         attempts += 1
     return fixer_copy, success
 
-def rodrigues_rotation(v, k, theta, center=None):
-    if center is None:
-        center = np.array([0,0,0])
-    v_centered = v - center
+def rodrigues_rotation(v, k, theta, centers=None):
+    """Applies Rodrigues' rotation on coordinates.
+    Vrot = v*cos(theta) + (k x v)sin(theta) + k(k.v)(1-cos(theta))
+
+    """
+    if centers is None:
+        centers = np.array([0,0,0])
+    else:
+        centers = centers[:, None, :]
+    v_centered = v - centers
     first_terms = v_centered * np.cos(theta)
-    second_terms = np.cross(k, v_centered)*np.sin(theta)
-    k_dot_vs = np.einsum('ijk,ijk->ij', [[k]], v_centered)
+    second_terms = np.cross(k[:, None, :], v_centered)*np.sin(theta)
+    k_dot_vs = np.einsum('ijk,ijk->ij', k[:, None, :], v_centered)
     ang = 1- np.cos(theta)
-    third_terms = np.array([k*k_dot_v[:,None]*ang for k_dot_v in k_dot_vs])
-    new_coords = (first_terms + second_terms + third_terms) + center
+    third_terms = np.array(
+        [k[i]*k_dot_vs[i][:, None]*ang for i in range(len(k_dot_vs))])
+    new_coords = (first_terms + second_terms + third_terms) + centers
     return new_coords
 
 def __get_iis_and_vec(pdb, res_num):
-    '''This is a helper function to rotate_chi1. Given the pdb and residue
+    """This is a helper function to rotate_chi1. Given the pdb and residue
        number, it will return the indices of atoms to rotate, the normalized
        vector to rotate along, and the center-coordinate for rotation
        reference (the beta-carbon coordinate).
-    '''
+    """
     # Get the atomic indices of the atoms to rotate
     top = pdb.topology
-    coords = pdb.xyz[0]
-    backbone_names = ['CA','CB','N','O','H','HA']
+    xyzs = pdb.xyz
+    backbone_names = ['C', 'CA', 'CB','N','O','H','HA']
     md_search_string = "name "+" or name ".join(backbone_names)
     backbone_iis = top.select(md_search_string)
     res_iis = top.select("resSeq %d" % res_num)
@@ -199,11 +206,12 @@ def __get_iis_and_vec(pdb, res_num):
     # Get the vector of rotation (alpha-carbon to beta-carbon)
     alpha_ii = top.select("resSeq %d and name CA" % res_num)[0]
     beta_ii = top.select("resSeq %d and name CB" % res_num)[0]
-    alpha_coord = coords[alpha_ii]
-    beta_coord = coords[beta_ii]
-    unnormed_rot_vec = beta_coord-alpha_coord
-    rotation_vec = unnormed_rot_vec/scipy.linalg.norm(unnormed_rot_vec)
-    return rotate_iis,rotation_vec,beta_coord
+    alpha_coord = xyzs[:, alpha_ii]
+    beta_coord = xyzs[:, beta_ii]
+    unnormed_rot_vec = beta_coord - alpha_coord
+    mags = np.sqrt(np.einsum('ij,ij->i', unnormed_rot_vec, unnormed_rot_vec))
+    rotation_vec = unnormed_rot_vec / mags[:,None]
+    return rotate_iis, rotation_vec, beta_coord
 
 def rotate_chi1(pdb, res_num, thetas=None, minimize=True):
     """Rotates a chi1 of a trajectory
@@ -236,14 +244,14 @@ def rotate_chi1(pdb, res_num, thetas=None, minimize=True):
     if res_name == 'ALA':
         raise ImproperDihedralRotation(
             'ALA does not have a chi1')
-    rotate_iis, rotation_vec, center_coord = __get_iis_and_vec(pdb, res_num)
+    rotate_iis, rotation_vecs, center_coords = __get_iis_and_vec(pdb, res_num)
     if thetas is None:
         thetas = [math.pi*2/3., np.pi*4/3.]
     new_pdbs = []
     for theta in thetas:
         new_pdb = copy.deepcopy(pdb)
         new_pdb.xyz[:, rotate_iis] = rodrigues_rotation(
-            new_pdb.xyz[:, rotate_iis], rotation_vec, theta, center=center_coord)
+            new_pdb.xyz[:, rotate_iis], rotation_vecs, theta, centers=center_coords)
         if minimize:
             new_pdb_min = [
                 minimizers.minimize(pdb_i, max_iterations=2000)
