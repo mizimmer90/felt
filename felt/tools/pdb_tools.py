@@ -5,6 +5,7 @@
 # Imports
 ###########################################################
 
+import collections
 import copy
 import math
 import numpy as np
@@ -171,9 +172,26 @@ def _apply_mutations(fixer, change_list, max_attempts=5):
     return fixer_copy, success
 
 def rodrigues_rotation(v, k, theta, centers=None):
-    """Applies Rodrigues' rotation on coordinates.
+    """Applies Rodrigues' rotation on a coordinate trajectory.
     Vrot = v*cos(theta) + (k x v)sin(theta) + k(k.v)(1-cos(theta))
 
+    Parameters
+    ----------
+    v : array, shape [n_frames, n_coordinates, dim_coordinate]
+        The coordinates to rotate around a vector. Primarily used
+        to rotate a trajectory of coordinates.
+    k : array, shape [n_frames, dim_coordinate]
+        A list of vectors to rotate each frame by individually.
+    theta : float
+        The angle to rotate by.
+    centers : array, shape [n_frames, dim_coordinate]
+        The center coordinate to rotate around.
+
+    Returns
+    ----------
+    new_coords : array, shape [n_frames, n_coordinate, dim_coordinate]
+        Updated coordinates: `v`, rotated around `k`, centered at
+        `centers`, by `theta`.
     """
     if centers is None:
         centers = np.array([0,0,0])
@@ -213,16 +231,18 @@ def __get_iis_and_vec(pdb, res_num):
     rotation_vec = unnormed_rot_vec / mags[:,None]
     return rotate_iis, rotation_vec, beta_coord
 
-def rotate_chi1(pdb, res_num, thetas=None, minimize=True):
+def rotate_chi1(pdb, res_num, thetas=None, minimize=False):
     """Rotates a chi1 of a trajectory
 
     Parameters
     ----------
     pdb : MDTraj.Trajectory object, shape [n_frames, ]
     res_num : int
+        The residue sequence number to rotate chi1
     thetas : array, shape [n_thetas, ]
-        The degrees to rotate a chi1 in radians
-    minimize : bool
+        The degrees to rotate a chi1 in radians.
+    minimize : bool, optional, default: False
+        Optionally minimizes each structure after rotating chi1s.
 
     Returns
     ----------
@@ -245,19 +265,32 @@ def rotate_chi1(pdb, res_num, thetas=None, minimize=True):
         raise ImproperDihedralRotation(
             'ALA does not have a chi1')
     rotate_iis, rotation_vecs, center_coords = __get_iis_and_vec(pdb, res_num)
+    # if no thetas are provided, rotates 120 deg twice.
     if thetas is None:
         thetas = [math.pi*2/3., np.pi*4/3.]
-    new_pdbs = []
-    for theta in thetas:
-        new_pdb = copy.deepcopy(pdb)
-        new_pdb.xyz[:, rotate_iis] = rodrigues_rotation(
-            new_pdb.xyz[:, rotate_iis], rotation_vecs, theta, centers=center_coords)
-        if minimize:
-            new_pdb_min = [
-                minimizers.minimize(pdb_i, max_iterations=2000)
-                for pdb_i in new_pdb]
-            new_pdb = new_pdb_min[0].join(new_pdb_min[1:])
-        new_pdbs.append(new_pdb)
+    # if multiple thetas are provided, rotates around all of them
+    elif isinstance(thetas, collections.Iterable) and not \
+            isinstance(thetas, (str, bytes)):
+        new_pdbs = []
+        for theta in thetas:
+            new_pdb = copy.deepcopy(pdb)
+            new_pdb.xyz[:, rotate_iis] = rodrigues_rotation(
+                new_pdb.xyz[:, rotate_iis], rotation_vecs, theta,
+                    centers=center_coords)
+            if minimize:
+                new_pdb_min = [
+                    minimizers.minimize(pdb_i, max_iterations=2000)
+                    for pdb_i in new_pdb]
+                new_pdb = new_pdb_min[0].join(new_pdb_min[1:])
+            new_pdbs.append(new_pdb)
+    # if a single theta is provided, does one rotation
+    elif (type(thetas) is int) or (type(thetas) is float):
+        new_pdbs = copy.deepcopy(pdb)
+        new_pdbs.xyz[:, rotate_iis] = rodrigues_rotation(
+            new_pdbs.xyz[:, rotate_iis], rotation_vecs, thetas,
+            centers=center_coords)
+    else:
+        raise InvalidData('unrecognized format for thetas.')
     return new_pdbs
         
 def _get_restraint_iis(change_list, pdb=None, fixer=None, rattle_distance=1.0):
