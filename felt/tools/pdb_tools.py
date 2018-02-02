@@ -350,9 +350,15 @@ def switch_atom_ordering(trj_to_switch, trj_reference):
     while len(iis_to_switch) > 0:
         switch_ii_0 = iis_to_switch[0]
         matching_id = trj_reference_ids[switch_ii_0]
-        switch_ii_1 = np.where(
-            np.all(
-                trj_to_switch_ids == matching_id,axis=1))[0][0]
+        try:
+            switch_ii_1 = np.where(
+                np.all(
+                    trj_to_switch_ids == matching_id,axis=1))[0][0]
+        except:
+            print(
+                "atom %s in residue %s-%s is not found!" \
+                % (matching_id[0], matching_id[1], matching_id[2]))
+            print("skipping this switch!\n")
         trj_to_switch = _switch_atom_ordering(
             trj_to_switch, trj_reference, switch_ii_0, switch_ii_1)
         trj_to_switch_ids = __return_atom_ids(trj_to_switch.topology)
